@@ -1,0 +1,47 @@
+---
+title: "harvey"
+author: "Naman Agarwal"
+date: "September 7, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library("tidyr")
+library("pivottabler")
+harvey = read.csv('./harvey.csv', header=TRUE)
+
+# split city_and_county into city and county columns
+harvey = separate(data = harvey, col=city_and_county, into=c("city", "county"), sep=",")
+
+#pivot table
+pt = PivotTable$new()
+pt$addData(harvey)
+pt$addRowDataGroups("county")
+pt$addRowDataGroups("city")
+pt$defineCalculation(calculationName="count", summariseExpression="n()")
+pt$renderPivot()
+
+```
+Above pivot table here
+
+
+```{r}
+
+contam = read.csv('./contaminants.csv', header=TRUE)
+newpt = PivotTable$new()
+newpt$addData(contam)
+newpt$addRowDataGroups("contaminant")
+newpt$defineCalculation(calculationName="sum", summariseExpression="sum(as.numeric(clean_amount_released))")
+newpt$renderPivot()
+
+```
