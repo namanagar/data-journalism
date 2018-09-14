@@ -1,47 +1,64 @@
 ---
-title: "harvey"
+title: "Week 2 In Class Assignment: Spreadsheets"
 author: "Naman Agarwal"
 date: "September 7, 2018"
-output: html_document
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("knitr")
+library("ggplot2")
 ```
 
-## R Markdown
+### The Assignment/The Data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Using the following data about pollution post-Hurricane Harvey in Houston and its surrounding areas, my "editor" (professor), Tyler Dukes, has asked me to do a one-paragraph memo on a quick analysis of airborne emissions events in the Houston and Beaumont regions post hurricane Harvey.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Here's an example of what the events spreadsheet looks like:
 
 ```{r}
-library("tidyr")
-library("pivottabler")
 harvey = read.csv('./harvey.csv', header=TRUE)
+contam = read.csv('./contaminants.csv', header=TRUE)
 
 # split city_and_county into city and county columns
 harvey = separate(data = harvey, col=city_and_county, into=c("city", "county"), sep=",")
 
-#pivot table
-pt = PivotTable$new()
-pt$addData(harvey)
-pt$addRowDataGroups("county")
-pt$addRowDataGroups("city")
-pt$defineCalculation(calculationName="count", summariseExpression="n()")
-pt$renderPivot()
+kable(head(harvey[,c("name", "location", "event_type")], 5))
 
 ```
-Above pivot table here
 
+And here's an example of what the contaminants spreadsheet looks like:
 
 ```{r}
-
-contam = read.csv('./contaminants.csv', header=TRUE)
-newpt = PivotTable$new()
-newpt$addData(contam)
-newpt$addRowDataGroups("contaminant")
-newpt$defineCalculation(calculationName="sum", summariseExpression="sum(as.numeric(clean_amount_released))")
-newpt$renderPivot()
-
+kable(head(contam[,c("contaminant", "amount_released")], 5))
 ```
+
+## Analysis
+
+```{r}
+harvey$length = difftime(as.Date(harvey$end_date, format = "%m/%d/%Y %I:%M %p"), as.Date(harvey$start_date, format = "%m/%d/%Y %I:%M %p"), units = "hours")
+
+sums = contam %>% group_by(event_id) %>% summarize(num = n(), total = sum(as.numeric(clean_amount_released_float)))
+sums$id = sums$event_id
+amt_released = left_join(harvey, sums, by="id")
+
+ggplot(amt_released, aes(y = total, x = as.numeric(length), color=city)) + scale_colour_hue(l=50) + geom_point() + labs(title='Post-Harvey Emissions Events', x="Length of Event (Hours)", y="Total Emissions (Lbs)")
+```
+
+This scatterplot shows how the length of emissions events post-Harvey varies with the total amount of emissions released by that event. Intuitively, it would make sense that as a leak continues without being fixed, the total emissions would increase. However, it's odd that there are three events in Port Arthur that went on for over 200 hours, and one that was just over 500 hours (about 20 days). What was happening there that took so long to resolve?
+
+There are also a few events in Port Arthur where despite being in a normal range for hours, the total emissions released are significantly higher than most other events. This is also worth investigating - what's different about Port Arthur that caused more emissions? 
+
+```{r}
+ggplot(amt_released, aes(x = num, y = total, color=city)) + scale_colour_hue(l=50) + geom_point() + labs(title='Post-Harvey Emissions Events', x="Number of chemicals released by event", y="Total Emissions (Lbs)")
+```
+
+Even looking at how many distinct chemicals were released vs the total emissions, we can see that Port Arthur has the highest points on both (the furthest top right values). Our publication should find out what made Port Arthur such a standout location - possibly hypotheses include 1) it has the biggest chemical plants 2) it was hit harder by the storm 3) it had the worst safety procedures in place, or other reasons.
+
+Further analysis is also necessary to determine which chemical releases were most dangerous - and filtering down the above data by truly dangerous chemicals could reveal a different story altogether. 
+
