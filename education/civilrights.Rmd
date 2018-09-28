@@ -1,0 +1,80 @@
+---
+title: "School Suspensions"
+author: "Daniel Truver, Naman Agarwal, Katie Eppinger, and Emily Liu"
+date: "9/28/2018"
+output:
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+library(dplyr)
+library(readr)
+library(stringr)
+library(ggplot2)
+```
+
+# Investigating school suspensions 
+
+```{r}
+df = read_csv("ed_data.csv")
+names(df) = str_replace_all(names(df), " ", "_")
+replace = df == "-"
+df[replace] = 1 
+df = df %>%
+  mutate(prop_suspended_black = Black_students_suspended/Black_student_enrollment) %>%
+  mutate(prop_suspended_hispanic = Hispanic_students_suspended/Hispanic_student_enrollment) %>%
+  mutate(prop_suspended_white = White_students_suspended/White_student_enrollment) %>%
+  mutate(prop_black_minus_white = prop_suspended_black - prop_suspended_white) %>%
+  mutate(prop_hispanic_minus_white = prop_suspended_hispanic - prop_suspended_white)
+
+black_minus_white_states_max = df$State[df$prop_black_minus_white > 
+                                      quantile(df$prop_black_minus_white, 0.95)]
+black_minus_white_states_min = df$State[df$prop_black_minus_white < 
+                                      quantile(df$prop_black_minus_white, 0.05)]
+```
+
+Using a dataset of Civil Rights Education data, we looking into the proportions of students suspended relative to their overall enrollment by race to see if states have some kind of discriminatory effect. 
+The below plot shows the proportions of suspensions by state between various races - we can clearly see that suspensions of white students occur at a far lower proportion than students of color. 
+```{r}
+ggplot(data = df, aes(x = State)) +
+  geom_point(aes(y = prop_suspended_black, col = "black")) +
+  geom_point(aes(y = prop_suspended_hispanic, col = "hispanic")) +
+  geom_point(aes(y = prop_suspended_white, col = "white")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(title='Proportion of School Suspensions by Race', x="State", y="Proportion")
+```
+
+The below plot shows the difference between suspensions of black students and white students and the difference between the suspensions of Hispanic students and white students. 
+
+```{r}
+ggplot(data = df, aes(x = State)) +
+  geom_point(aes(y = prop_black_minus_white, col = "black_minus_white")) +
+  geom_point(aes(y = prop_hispanic_minus_white, col = "hispanic_minus_white")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(title='Difference in Proportions of School Suspensions by Race', x="State", y="Proportion")
+```
+
+The below two graphs show the distribution of differences in suspension rates between races. 
+
+```{r}
+ggplot(data = df, aes(x = prop_black_minus_white)) + geom_histogram() + 
+labs(title='Distribution of Differences Between Suspensions of Black and White Students')
+```
+
+```{r}
+ggplot(data = df, aes(x = prop_hispanic_minus_white)) + geom_histogram() + 
+  labs(title='Distribution of Differences Between Suspensions of Hispanic and White Students')
+```
+
+The below two lines show the outliers in our distribution labeled prop_black_minus_white (the difference in proportion between black and white student suspensions) - meaning the tails of that graph. 
+
+```{r}
+black_minus_white_states_max
+black_minus_white_states_min
+```
+
+We see that the outlier states on the max - the states with the highest difference between black and white student suspension rates - are Ohio, Tennessee, and Wisconsin, while the outlying minima states are Hawaii, Idaho, and North Dakota. We should further investigate these states to see if there are policies or systematic injustice leading to these differences. 
+
