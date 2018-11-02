@@ -1,0 +1,62 @@
+---
+title: "Isis Recruits"
+author: "Naman Agarwal"
+date: "November 2, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(maps)
+```
+
+```{r}
+isis = read.csv("./isis.csv", header=TRUE)
+```
+
+Here's the dataset from the reporter as given. I'm using the `dplyr` package to clean some of the columns (turning "t"s into TRUEs and other things like that.
+
+```{r}
+
+tToBool = function(val){
+  return(ifelse(val == "t", TRUE, FALSE))
+}
+
+isis= isis %>% mutate(convicted = tToBool(convicted))
+# fixes convicted column
+# below lines do the same but fix other columns
+isis = isis %>% mutate(is_minor_tf = tToBool(is_minor_tf))
+isis = isis %>% mutate(is_charged = tToBool(is_charged))
+
+isis[which(isis$is_minor_tf == TRUE),c("name", "age_at_arrest")]
+isis[which(isis$is_charged == TRUE),c("name", "is_charged")]
+isis[which(isis$convicted == TRUE),c("name", "convicted")]
+```
+
+There are two 17 year old recruits in the dataset, both arrested and charged in 2015. 66 of the people in the dataset were charged, of which 47 of them were convicted.
+
+
+```{r}
+usa <- map_data("usa")
+ggplot() + geom_polygon(data = usa, aes(x=long, y = lat, group = group)) + 
+  coord_fixed(1.3) + geom_point(data=isis, aes(x=long, y=lat, color=is_charged))
+```
+We can see that some further data cleaning may be necessary to fix the lat/long data since there are points in the ocean near Florida, along with the fact that 3 of the recruits have no lat/long data at all. There doesn't appear to be a correlation between geographic location and whether the person has been charged or not, based on the map above.
+
+Two candidates, "Alexander Blair" and "Alexander E. Blair" are likely duplicates and should be resolved.
+
+```{r}
+ggplot() + geom_histogram(data=isis, aes(age_at_arrest))
+
+```
+
+We can see that the age distribution of these people skews younger, which makes sense. Note - there's one person in the dataset who has no age listed, so that should be investigated and fixed.
+
+```{r}
+ggplot(data=isis, aes(x=year)) + geom_line(aes(y=..count..), stat="bin", binwidth=10) + xlim(2009, 2020)
+```
+
+Most of the dataset is data from several years ago, with a steady decrease in number of people tracked on the spreadsheet year over year.
+
+
